@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Complex Mapping Visualizer — w = zⁿ</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f4;
+      --bg3: #eeede9;
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --border: rgba(0,0,0,0.12);
+      --blue: #378ADD;
+      --red: #E24B4A;
+      --purple: #7F77DD;
+      --grid: rgba(0,0,0,0.07);
+      --axis: rgba(0,0,0,0.35);
+      --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --bg2: #252523;
+        --bg3: #2e2e2b;
+        --text: #e8e6df;
+        --text2: #888780;
+        --border: rgba(255,255,255,0.1);
+        --blue: #5BA3F0;
+        --red: #F07070;
+        --purple: #AFA9EC;
+        --grid: rgba(255,255,255,0.07);
+        --axis: rgba(255,255,255,0.3);
+      }
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: .25rem;
+      letter-spacing: -.01em;
+    }
+    .subtitle {
+      font-size: .85rem;
+      color: var(--text2);
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-row label { font-size: .8rem; color: var(--text2); }
+    .input-row input,
+    .input-row select {
+      padding: 6px 10px;
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      font-size: .85rem;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .input-row input:focus,
+    .input-row select:focus { border-color: var(--blue); }
+
+    .btn {
+      padding: 6px 16px;
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: .85rem;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn:hover { background: var(--bg3); }
+    .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .btn.primary:hover { opacity: .88; }
+
+    .formula-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: .75rem 0;
+    }
+    .chip {
+      background: var(--bg3);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 12px;
+      font-size: .8rem;
+      color: var(--text2);
+    }
+    .chip b { color: var(--blue); font-weight: 600; }
+
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: .5rem;
+    }
+    .speed-row label { font-size: .78rem; color: var(--text2); }
+    .speed-row input[type=range] {
+      accent-color: var(--blue);
+      width: 90px;
+    }
+    .speed-row span { font-size: .78rem; color: var(--text2); min-width: 28px; }
+
+    .planes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 560px) { .planes { grid-template-columns: 1fr; } }
+
+    .pbox {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem;
+    }
+    .plabel {
+      font-size: .75rem;
+      color: var(--text2);
+      margin-bottom: 6px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    canvas {
+      width: 100%;
+      aspect-ratio: 1;
+      display: block;
+      border-radius: 6px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: .75rem;
+    }
+    @media (max-width: 480px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-cell {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: .5rem .75rem;
+    }
+    .info-cell .lbl { font-size: .72rem; color: var(--text2); margin-bottom: 2px; }
+    .info-cell .val { font-size: .88rem; font-weight: 500; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--text); }
+    .info-cell .val.blue { color: var(--blue); }
+    .info-cell .val.red  { color: var(--red); }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      margin-top: .5rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .78rem;
+      color: var(--text2);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    footer {
+      text-align: center;
+      font-size: .75rem;
+      color: var(--text2);
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 0.5px solid var(--border);
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Complex Mapping Visualizer</h1>
+  <p class="subtitle">복소함수 w = zⁿ 의 기하학적 매핑을 애니메이션으로 탐색합니다.</p>
+
+  <div class="card">
+    <div class="input-row">
+      <label>w = z^</label>
+      <input id="inp-n" type="number" value="2" min="1" max="8" step="1" style="width:52px"/>
+      <label style="margin-left:4px;">곡선:</label>
+      <select id="inp-type">
+        <option value="line">직선 y = mx</option>
+        <option value="hline">수평선 y = c</option>
+        <option value="vline">수직선 x = c</option>
+        <option value="circle">원 |z| = r</option>
+        <option value="ray">반직선 arg(z) = θ°</option>
+      </select>
+      <input id="inp-param" type="number" value="0.5" step="0.1" style="width:68px"/>
+      <label id="param-label" style="font-size:.75rem;color:var(--text2);">기울기 m</label>
+      <button class="btn primary" id="btn-play" onclick="toggleAnim()">▶ 재생</button>
+      <button class="btn" onclick="resetAnim()">↺ 리셋</button>
+    </div>
+
+    <div class="formula-row">
+      <div class="chip">원본: <b id="f-orig">y = 0.5x</b></div>
+      <div class="chip">변환: <b id="f-map">계산 중...</b></div>
+      <div class="chip">n = <b id="f-n">2</b></div>
+    </div>
+
+    <div class="speed-row">
+      <label>속도</label>
+      <input type="range" id="sp-sl" min="1" max="8" value="3" step="1"/>
+      <span id="sp-val">3</span>
+      <label style="margin-left:8px;">진행</label>
+      <input type="range" id="pr-sl" min="0" max="100" value="0" step="1" style="width:130px;"/>
+      <span id="pr-val">0%</span>
+    </div>
+  </div>
+
+  <div class="planes">
+    <div class="pbox">
+      <div class="plabel">z-plane (원본)</div>
+      <canvas id="cv-z" width="340" height="340"></canvas>
+    </div>
+    <div class="pbox">
+      <div class="plabel">w-plane (매핑)</div>
+      <canvas id="cv-w" width="340" height="340"></canvas>
+    </div>
+  </div>
+
+  <div class="legend" style="margin-top:.75rem;">
+    <div class="legend-item"><div class="dot" style="background:var(--blue)"></div>z 경로 (원본)</div>
+    <div class="legend-item"><div class="dot" style="background:var(--red)"></div>w 경로 (변환)</div>
+    <div class="legend-item"><div class="dot" style="background:var(--purple)"></div>극좌표 팔 (r, θ)</div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="lbl">현재 z</div>
+      <div class="val blue" id="info-z">—</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">변환 w = zⁿ</div>
+      <div class="val red" id="info-w">—</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">반지름 |z| → |w| = |z|ⁿ</div>
+      <div class="val" id="info-r">—</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">편각 arg(z) → arg(w) = n·arg(z)</div>
+      <div class="val" id="info-th">—</div>
+    </div>
+  </div>
+
+  <footer>
+    Complex Mapping Visualizer &nbsp;·&nbsp;
+    Built with vanilla JS &nbsp;·&nbsp;
+    <a href="https://github.com/llouis0622" target="_blank">llouis0622</a>
+  </footer>
+</div>
+
+<script>
+const cvZ = document.getElementById('cv-z');
+const cvW = document.getElementById('cv-w');
+const ctxZ = cvZ.getContext('2d');
+const ctxW = cvW.getContext('2d');
+const SZ = 340, C = 170, SC = 62;
+
+let animId = null, progress = 0, pts = [], mpts = [];
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function toS(x, y) { return [C + x * SC, C - y * SC]; }
+
+function cPow(x, y, n) {
+  const r = Math.sqrt(x*x + y*y);
+  const th = Math.atan2(y, x);
+  return [Math.pow(r,n)*Math.cos(n*th), Math.pow(r,n)*Math.sin(n*th)];
+}
+
+function fmt(v) { return v.toFixed(3); }
+function deg(r) { return (r * 180 / Math.PI).toFixed(1); }
+
+function drawGrid(ctx) {
+  ctx.clearRect(0, 0, SZ, SZ);
+
+  ctx.strokeStyle = css('--grid'); ctx.lineWidth = 0.5;
+  for (let i = -5; i <= 5; i++) {
+    let [x1,y1] = toS(i,-5), [x2,y2] = toS(i,5);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    let [a1,b1] = toS(-5,i), [a2,b2] = toS(5,i);
+    ctx.beginPath(); ctx.moveTo(a1,b1); ctx.lineTo(a2,b2); ctx.stroke();
+  }
+
+  const ac = css('--axis');
+  ctx.strokeStyle = ac; ctx.lineWidth = 1; ctx.fillStyle = ac;
+
+  let [ax1,ay] = toS(-4.2,0), [ax2] = toS(4.2,0);
+  ctx.beginPath(); ctx.moveTo(ax1,ay); ctx.lineTo(ax2,ay); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ax2,ay); ctx.lineTo(ax2-8,ay-4); ctx.lineTo(ax2-8,ay+4); ctx.closePath(); ctx.fill();
+
+  let [bx,by2] = toS(0,4.2), [,by1] = toS(0,-4.2);
+  ctx.beginPath(); ctx.moveTo(bx,by1); ctx.lineTo(bx,by2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx,by2); ctx.lineTo(bx-4,by2+8); ctx.lineTo(bx+4,by2+8); ctx.closePath(); ctx.fill();
+
+  ctx.font = '10px -apple-system, sans-serif';
+  for (let i = -3; i <= 3; i++) {
+    if (i === 0) continue;
+    let [px,py] = toS(i,0); ctx.fillText(i, px-4, py+13);
+    let [qx,qy] = toS(0,i); ctx.fillText(i, C+4, qy+4);
+  }
+}
+
+function drawCurve(ctx, ps, frac, color, alpha=0.3) {
+  const cnt = Math.max(2, Math.floor(ps.length * frac));
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  for (let i = 0; i < cnt; i++) {
+    let [sx,sy] = toS(ps[i][0], ps[i][1]);
+    i === 0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+function drawActivePath(ctx, ps, cnt, color) {
+  if (cnt < 2) return;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let i = 0; i < cnt; i++) {
+    let [sx,sy] = toS(ps[i][0], ps[i][1]);
+    i === 0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+function drawPolarArm(ctx, x, y) {
+  const [ox,oy] = toS(0,0), [sx,sy] = toS(x,y);
+  const pc = css('--purple');
+  ctx.save(); ctx.strokeStyle = pc; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]); ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(sx,sy); ctx.stroke();
+  ctx.restore();
+}
+
+function drawRing(ctx, r) {
+  const [ox,oy] = toS(0,0);
+  const pc = css('--purple');
+  ctx.save(); ctx.strokeStyle = pc; ctx.lineWidth = 1; ctx.setLineDash([3,4]); ctx.globalAlpha = 0.35;
+  ctx.beginPath(); ctx.arc(ox,oy, r*SC, 0, 2*Math.PI); ctx.stroke();
+  ctx.restore();
+}
+
+function drawDot(ctx, x, y, color, r=6) {
+  const [sx,sy] = toS(x,y);
+  ctx.save(); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+}
+
+function drawLabel(ctx, x, y, text, color, ox=9, oy=-9) {
+  const [sx,sy] = toS(x,y);
+  ctx.save(); ctx.fillStyle = color; ctx.font = '11px -apple-system, sans-serif';
+  ctx.fillText(text, sx+ox, sy+oy); ctx.restore();
+}
+
+function getPoints() {
+  const n = parseFloat(document.getElementById('inp-n').value)||2;
+  const type = document.getElementById('inp-type').value;
+  const p = parseFloat(document.getElementById('inp-param').value)||0.5;
+  const ps = [];
+  if (type === 'line') {
+    for (let t = -3.5; t <= 3.5; t += 0.04) ps.push([t, p*t]);
+  } else if (type === 'hline') {
+    for (let t = -3.5; t <= 3.5; t += 0.04) ps.push([t, p]);
+  } else if (type === 'vline') {
+    for (let t = -3.5; t <= 3.5; t += 0.04) ps.push([p, t]);
+  } else if (type === 'circle') {
+    const r = Math.abs(p)||1;
+    for (let a = 0; a <= 2*Math.PI+0.05; a += 0.035) ps.push([r*Math.cos(a), r*Math.sin(a)]);
+  } else if (type === 'ray') {
+    const angle = p * Math.PI / 180;
+    for (let r = 0.05; r <= 3.5; r += 0.04) ps.push([r*Math.cos(angle), r*Math.sin(angle)]);
+  }
+  return ps;
+}
+
+function updateFormula() {
+  const n = parseFloat(document.getElementById('inp-n').value)||2;
+  const type = document.getElementById('inp-type').value;
+  const p = parseFloat(document.getElementById('inp-param').value)||0.5;
+  const labels = { line:'기울기 m', hline:'y값 c', vline:'x값 c', circle:'반지름 r', ray:'각도 (°)' };
+  document.getElementById('param-label').textContent = labels[type]||'파라미터';
+  document.getElementById('f-n').textContent = n;
+  let orig = '', mapped = '';
+  if (type === 'line') {
+    orig = `y = ${p}x`;
+    const nm = Math.tan(n * Math.atan(p));
+    mapped = `y ≈ ${nm.toFixed(3)}x  (arg × ${n})`;
+  } else if (type === 'hline') {
+    orig = `y = ${p}`; mapped = `포물선 (v² = 상수 형태)`;
+  } else if (type === 'vline') {
+    orig = `x = ${p}`; mapped = `포물선 변환`;
+  } else if (type === 'circle') {
+    orig = `|z| = ${p}`; mapped = `|w| = ${Math.pow(Math.abs(p),n).toFixed(3)}`;
+  } else if (type === 'ray') {
+    orig = `arg(z) = ${p}°`; mapped = `arg(w) = ${(n*p).toFixed(1)}°`;
+  }
+  document.getElementById('f-orig').textContent = orig;
+  document.getElementById('f-map').textContent = mapped;
+}
+
+function render(frac) {
+  const n = parseFloat(document.getElementById('inp-n').value)||2;
+  drawGrid(ctxZ); drawGrid(ctxW);
+
+  const bluec = css('--blue'), redc = css('--red');
+
+  drawCurve(ctxZ, pts, 1, bluec, 0.25);
+  drawCurve(ctxW, mpts, 1, redc, 0.25);
+
+  const cnt = Math.max(1, Math.floor(pts.length * frac));
+  drawActivePath(ctxZ, pts, cnt, bluec);
+  drawActivePath(ctxW, mpts, cnt, redc);
+
+  if (cnt >= 1) {
+    const [zx, zy] = pts[cnt-1];
+    const [wx, wy] = mpts[cnt-1];
+    const r  = Math.sqrt(zx*zx + zy*zy);
+    const rn = Math.pow(r, n);
+    const th = Math.atan2(zy, zx);
+    const thn = n * th;
+
+    drawRing(ctxZ, r);
+    drawPolarArm(ctxZ, zx, zy);
+    drawRing(ctxW, rn);
+    drawPolarArm(ctxW, wx, wy);
+
+    drawDot(ctxZ, zx, zy, bluec);
+    drawLabel(ctxZ, zx, zy, `(${fmt(zx)}, ${fmt(zy)})`, bluec);
+
+    drawDot(ctxW, wx, wy, redc);
+    drawLabel(ctxW, wx, wy, `(${fmt(wx)}, ${fmt(wy)})`, redc);
+
+    const zSign = zy >= 0 ? '+' : '-';
+    const wSign = wy >= 0 ? '+' : '-';
+    document.getElementById('info-z').textContent = `${fmt(zx)} ${zSign} ${fmt(Math.abs(zy))}i`;
+    document.getElementById('info-w').textContent = `${fmt(wx)} ${wSign} ${fmt(Math.abs(wy))}i`;
+    document.getElementById('info-r').textContent = `${fmt(r)} → ${fmt(rn)}`;
+    document.getElementById('info-th').textContent = `${deg(th)}° → ${deg(thn)}°`;
+  }
+
+  const pct = Math.round(frac * 100);
+  document.getElementById('pr-sl').value = pct;
+  document.getElementById('pr-val').textContent = pct + '%';
+}
+
+function toggleAnim() {
+  const btn = document.getElementById('btn-play');
+  if (animId) {
+    cancelAnimationFrame(animId); animId = null;
+    btn.textContent = '▶ 재생'; return;
+  }
+  if (progress >= 1) progress = 0;
+  btn.textContent = '⏸ 일시정지';
+  const step = () => {
+    const sp = parseInt(document.getElementById('sp-sl').value)||3;
+    progress = Math.min(progress + sp * 0.003, 1);
+    render(progress);
+    if (progress < 1) animId = requestAnimationFrame(step);
+    else { animId = null; btn.textContent = '▶ 재생'; }
+  };
+  animId = requestAnimationFrame(step);
+}
+
+function resetAnim() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  progress = 0;
+  document.getElementById('btn-play').textContent = '▶ 재생';
+  pts = getPoints();
+  const n = parseFloat(document.getElementById('inp-n').value)||2;
+  mpts = pts.map(([x,y]) => cPow(x,y,n));
+  updateFormula();
+  render(0);
+}
+
+document.getElementById('pr-sl').addEventListener('input', function() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; document.getElementById('btn-play').textContent = '▶ 재생'; }
+  progress = this.value / 100; render(progress);
+});
+document.getElementById('sp-sl').addEventListener('input', function() {
+  document.getElementById('sp-val').textContent = this.value;
+});
+['inp-n','inp-type','inp-param'].forEach(id => {
+  document.getElementById(id).addEventListener('change', resetAnim);
+  document.getElementById(id).addEventListener('input', () => {
+    pts = getPoints();
+    const n = parseFloat(document.getElementById('inp-n').value)||2;
+    mpts = pts.map(([x,y]) => cPow(x,y,n));
+    updateFormula(); render(progress);
+  });
+});
+
+resetAnim();
+</script>
+</body>
+</html>
